@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>gazebo_traffic_light</name>
+  <version>0.0.0</version>
+  <description>
+    Gazebo traffic light model and corresponding control plugin
+  </description>
+
+  <license>BSD2</license>
+  <author email="mradov@gmail.com">Micho Radovnikovich</author>
+  <maintainer email="mradov@gmail.com">Micho Radovnikovich</maintainer>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>gazebo_ros</depend>
+
+  <export>
+    <gazebo_ros gazebo_model_path="${prefix}/models/" />
+    <gazebo plugin_path="${prefix}/lib" />
+  </export>
+
+</package>
