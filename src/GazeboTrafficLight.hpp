@@ -14,6 +14,8 @@ namespace gazebo {
     RED = 0, YELLOW, GREEN
   } LightColor;
 
+  typedef std::array<physics::JointPtr, 3> TrafficLightJoints;
+
   struct LightSequenceEntry {
     LightColor color;
     double duration;
@@ -37,8 +39,9 @@ namespace gazebo {
     private:
       void OnUpdate(const common::UpdateInfo& info);
       void computeCycleTime();
-      void setColor(LightColor color, bool flashing);
-      void advanceSequence();
+      void setColor(const std::string& traffic_light_name, LightColor color, bool flashing);
+      void advanceSequence(const std::string& traffic_light_name);
+      void parseJointName(const std::string& input_str, std::string& traffic_light_name, std::string& joint_name);
       void reconfig(gazebo_traffic_light::GazeboTrafficLightConfig& config, uint32_t level);
 
       std::unique_ptr<ros::NodeHandle> n_;
@@ -47,9 +50,7 @@ namespace gazebo {
 
       event::ConnectionPtr update_connection_;
       common::Time last_update_time_;
-      physics::JointPtr green_switch_joint_;
-      physics::JointPtr yellow_switch_joint_;
-      physics::JointPtr red_switch_joint_;
+      std::map<std::string, TrafficLightJoints> traffic_lights_;
 
       std::vector<LightSequenceEntry> light_sequence_;
       double sequence_timestamp_;

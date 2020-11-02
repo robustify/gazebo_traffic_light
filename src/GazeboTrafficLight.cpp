@@ -8,35 +8,29 @@ namespace gazebo {
 
   void GazeboTrafficLight::Load(physics::ModelPtr model, sdf::ElementPtr sdf) {
 
+    ROS_INFO_STREAM("Loaded traffic light plugin for model: " << model->GetName());
+
     update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboTrafficLight::OnUpdate, this, _1));
     
     for (auto model_joint : model->GetJoints()) {
       if (model_joint->GetName().find("switch") == std::string::npos) {
         continue;
       }
-
-      if (model_joint->GetName().find("green") != std::string::npos) {
-        green_switch_joint_ = model_joint;
-      } else if (model_joint->GetName().find("yellow") != std::string::npos) {
-        yellow_switch_joint_ = model_joint;
-      } else if (model_joint->GetName().find("red") != std::string::npos) {
-        red_switch_joint_ = model_joint;
+      std::string traffic_light_name;
+      std::string joint_name;
+      parseJointName(model_joint->GetName(), traffic_light_name, joint_name);
+      if (joint_name.find("red") != std::string::npos) {
+        traffic_lights_[traffic_light_name][RED] = model_joint;
+      } else if (joint_name.find("yellow") != std::string::npos) {
+        traffic_lights_[traffic_light_name][YELLOW] = model_joint;
+      } else if (joint_name.find("green") != std::string::npos) {
+        traffic_lights_[traffic_light_name][GREEN] = model_joint;
       }
     }
 
-    if (!green_switch_joint_) {
-      ROS_ERROR("Green joint not found!");
-    }
-    if (!yellow_switch_joint_) {
-      ROS_ERROR("Yellow joint not found!");
-    }
-    if (!red_switch_joint_) {
-      ROS_ERROR("Red joint not found!");
-    }
-
     // TODO: Get unique name somehow
-    n_.reset(new ros::NodeHandle());
-    srv_.reset(new dynamic_reconfigure::Server<gazebo_traffic_light::GazeboTrafficLightConfig>(ros::NodeHandle(*n_, "traffic_light")));
+    n_.reset(new ros::NodeHandle(model->GetName()));
+    srv_.reset(new dynamic_reconfigure::Server<gazebo_traffic_light::GazeboTrafficLightConfig>(*n_));
     srv_->setCallback(boost::bind(&GazeboTrafficLight::reconfig, this, _1, _2));
 
     // TODO: Create a way to set the sequence from YAML and/or service
@@ -44,6 +38,18 @@ namespace gazebo {
     light_sequence_.push_back(LightSequenceEntry(LightColor::YELLOW, 2.0, false));
     light_sequence_.push_back(LightSequenceEntry(LightColor::RED, 6.0, false));
     computeCycleTime();
+  }
+
+  void GazeboTrafficLight::parseJointName(const std::string& input_str, std::string& traffic_light_name, std::string& joint_name) {
+    std::string s = input_str;
+    size_t pos = s.rfind("::");
+    if (pos == std::string::npos) {
+      traffic_light_name = "gazebo_traffic_light";
+      joint_name = s;
+    } else {
+      traffic_light_name = s.substr(0, pos);
+      joint_name = s.substr(pos + 2);
+    }
   }
 
   void GazeboTrafficLight::computeCycleTime() {
@@ -54,28 +60,30 @@ namespace gazebo {
   }
 
   void GazeboTrafficLight::OnUpdate(const common::UpdateInfo& info) {
-    switch (cfg_.override) {
-      case gazebo_traffic_light::GazeboTrafficLight_NO_FORCE:
-      advanceSequence();
-      break;
-      case gazebo_traffic_light::GazeboTrafficLight_RED:
-      setColor(LightColor::RED, false);
-      break;
-      case gazebo_traffic_light::GazeboTrafficLight_RED_FLASH:
-      setColor(LightColor::RED, true);
-      break;
-      case gazebo_traffic_light::GazeboTrafficLight_YELLOW:
-      setColor(LightColor::YELLOW, false);
-      break;
-      case gazebo_traffic_light::GazeboTrafficLight_YELLOW_FLASH:
-      setColor(LightColor::YELLOW, true);
-      break;
-      case gazebo_traffic_light::GazeboTrafficLight_GREEN:
-      setColor(LightColor::GREEN, false);
-      break;
-      case gazebo_traffic_light::GazeboTrafficLight_GREEN_FLASH:
-      setColor(LightColor::GREEN, true);
-      break;
+    for (auto light : traffic_lights_) {
+      switch (cfg_.override) {
+        case gazebo_traffic_light::GazeboTrafficLight_NO_FORCE:
+        advanceSequence(light.first);
+        break;
+        case gazebo_traffic_light::GazeboTrafficLight_RED:
+        setColor(light.first, LightColor::RED, false);
+        break;
+        case gazebo_traffic_light::GazeboTrafficLight_RED_FLASH:
+        setColor(light.first, LightColor::RED, true);
+        break;
+        case gazebo_traffic_light::GazeboTrafficLight_YELLOW:
+        setColor(light.first, LightColor::YELLOW, false);
+        break;
+        case gazebo_traffic_light::GazeboTrafficLight_YELLOW_FLASH:
+        setColor(light.first, LightColor::YELLOW, true);
+        break;
+        case gazebo_traffic_light::GazeboTrafficLight_GREEN:
+        setColor(light.first, LightColor::GREEN, false);
+        break;
+        case gazebo_traffic_light::GazeboTrafficLight_GREEN_FLASH:
+        setColor(light.first, LightColor::GREEN, true);
+        break;
+      }
     }
 
     double time_step = (info.simTime - last_update_time_).Double();
@@ -87,41 +95,24 @@ namespace gazebo {
     }
   }
 
-  void GazeboTrafficLight::advanceSequence() {
+  void GazeboTrafficLight::advanceSequence(const std::string& traffic_light_name) {
     double time_thres = cycle_time_;
     for (auto it = light_sequence_.rbegin(); it != light_sequence_.rend(); ++it) {
       time_thres -= it->duration;
       if (sequence_timestamp_ >= time_thres) {
-        setColor(it->color, it->flashing);
+        setColor(traffic_light_name, it->color, it->flashing);
         break;
       }
     }
   }
 
-  void GazeboTrafficLight::setColor(LightColor color, bool flashing) {
-    if (flashing && ( (int)(1.25 * sequence_timestamp_) % 2) ) {
-      red_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      yellow_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      green_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      return;
-    }
-    
-    switch (color) {
-      case LightColor::RED:
-      red_switch_joint_->SetPosition(0, LIGHT_ON_POS_);
-      yellow_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      green_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      break;
-      case LightColor::YELLOW:
-      red_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      yellow_switch_joint_->SetPosition(0, LIGHT_ON_POS_);
-      green_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      break;
-      case LightColor::GREEN:
-      red_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      yellow_switch_joint_->SetPosition(0, LIGHT_OFF_POS_);
-      green_switch_joint_->SetPosition(0, LIGHT_ON_POS_);
-      break;
+  void GazeboTrafficLight::setColor(const std::string& traffic_light_name, LightColor color, bool flashing) {
+    for (int i = LightColor::RED; i <= LightColor::GREEN; i++) {
+      if ( (flashing && ( (int)(1.25 * sequence_timestamp_) % 2 )) || (i != color) ){
+        traffic_lights_[traffic_light_name][i]->SetPosition(0, LIGHT_OFF_POS_);
+      } else {
+        traffic_lights_[traffic_light_name][i]->SetPosition(0, LIGHT_ON_POS_);
+      }
     }
   }
 

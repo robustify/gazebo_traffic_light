@@ -3,8 +3,6 @@
   <model name="gazebo_traffic_light">
     <static>false</static>
     
-    <plugin name="traffic_light_plugin" filename="libgazebo_traffic_light.so" />
-
     <link name="light_fixture">
       <gravity>false</gravity>
       <pose>0 0 0 0 0 0</pose>
