@@ -5,7 +5,6 @@
 #include <dynamic_reconfigure/server.h>
 #include <gazebo_traffic_light/GazeboTrafficLightConfig.h>
 #include <gazebo/common/Plugin.hh>
-#include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
 
 namespace gazebo {
@@ -37,14 +36,15 @@ namespace gazebo {
       virtual void Reset();
 
     private:
-      void OnUpdate(const common::UpdateInfo& info);
       void computeCycleTime();
       void setColor(const std::string& traffic_light_name, LightColor color, bool flashing);
       void advanceSequence(const std::string& traffic_light_name);
       void parseJointName(const std::string& input_str, std::string& traffic_light_name, std::string& joint_name);
       void reconfig(gazebo_traffic_light::GazeboTrafficLightConfig& config, uint32_t level);
+      void timerCb(const ros::TimerEvent& event);
 
       std::unique_ptr<ros::NodeHandle> n_;
+      ros::Timer light_timer_;
       std::shared_ptr<dynamic_reconfigure::Server<gazebo_traffic_light::GazeboTrafficLightConfig> > srv_;
       gazebo_traffic_light::GazeboTrafficLightConfig cfg_;
 

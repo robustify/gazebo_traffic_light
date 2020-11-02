@@ -10,8 +10,6 @@ namespace gazebo {
 
     ROS_INFO_STREAM("Loaded traffic light plugin for model: " << model->GetName());
 
-    update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboTrafficLight::OnUpdate, this, _1));
-    
     for (auto model_joint : model->GetJoints()) {
       if (model_joint->GetName().find("switch") == std::string::npos) {
         continue;
@@ -30,6 +28,7 @@ namespace gazebo {
 
     // TODO: Get unique name somehow
     n_.reset(new ros::NodeHandle(model->GetName()));
+    light_timer_ = n_->createTimer(ros::Duration(0.1), &GazeboTrafficLight::timerCb, this);
     srv_.reset(new dynamic_reconfigure::Server<gazebo_traffic_light::GazeboTrafficLightConfig>(*n_));
     srv_->setCallback(boost::bind(&GazeboTrafficLight::reconfig, this, _1, _2));
 
@@ -59,7 +58,7 @@ namespace gazebo {
     }
   }
 
-  void GazeboTrafficLight::OnUpdate(const common::UpdateInfo& info) {
+  void GazeboTrafficLight::timerCb(const ros::TimerEvent& event) {
     for (auto light : traffic_lights_) {
       switch (cfg_.override) {
         case gazebo_traffic_light::GazeboTrafficLight_NO_FORCE:
@@ -86,10 +85,11 @@ namespace gazebo {
       }
     }
 
-    double time_step = (info.simTime - last_update_time_).Double();
-    last_update_time_ = info.simTime;
+    if (event.last_expected == ros::Time(0)) {
+      return;
+    }
 
-    sequence_timestamp_ += time_step;
+    sequence_timestamp_ += (event.current_real - event.last_real).toSec();
     if (sequence_timestamp_ >= cycle_time_) {
       sequence_timestamp_ -= cycle_time_;
     }
