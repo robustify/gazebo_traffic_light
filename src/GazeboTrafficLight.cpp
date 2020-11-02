@@ -9,9 +9,20 @@ namespace gazebo {
   void GazeboTrafficLight::Load(physics::ModelPtr model, sdf::ElementPtr sdf) {
 
     update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboTrafficLight::OnUpdate, this, _1));
-    green_switch_joint_ = model->GetJoint("green_switch");
-    yellow_switch_joint_ = model->GetJoint("yellow_switch");
-    red_switch_joint_ = model->GetJoint("red_switch");
+    
+    for (auto model_joint : model->GetJoints()) {
+      if (model_joint->GetName().find("switch") == std::string::npos) {
+        continue;
+      }
+
+      if (model_joint->GetName().find("green") != std::string::npos) {
+        green_switch_joint_ = model_joint;
+      } else if (model_joint->GetName().find("yellow") != std::string::npos) {
+        yellow_switch_joint_ = model_joint;
+      } else if (model_joint->GetName().find("red") != std::string::npos) {
+        red_switch_joint_ = model_joint;
+      }
+    }
 
     if (!green_switch_joint_) {
       ROS_ERROR("Green joint not found!");
@@ -29,9 +40,9 @@ namespace gazebo {
     srv_->setCallback(boost::bind(&GazeboTrafficLight::reconfig, this, _1, _2));
 
     // TODO: Create a way to set the sequence from YAML and/or service
-    light_sequence_.push_back(LightSequenceEntry(LightColor::GREEN, 4.0));
-    light_sequence_.push_back(LightSequenceEntry(LightColor::YELLOW, 2.0));
-    light_sequence_.push_back(LightSequenceEntry(LightColor::RED, 6.0, true));
+    light_sequence_.push_back(LightSequenceEntry(LightColor::GREEN, 4.0, false));
+    light_sequence_.push_back(LightSequenceEntry(LightColor::YELLOW, 2.0, false));
+    light_sequence_.push_back(LightSequenceEntry(LightColor::RED, 6.0, false));
     computeCycleTime();
   }
 
