@@ -26,7 +26,6 @@ namespace gazebo {
       }
     }
 
-    // TODO: Get unique name somehow
     n_.reset(new ros::NodeHandle(model->GetName()));
     light_timer_ = n_->createTimer(ros::Duration(0.1), &GazeboTrafficLight::timerCb, this);
     srv_.reset(new dynamic_reconfigure::Server<gazebo_traffic_light::GazeboTrafficLightConfig>(*n_));
