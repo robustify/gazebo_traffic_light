@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+
+  <rosparam ns="test_cantilevered_traffic_light" file="$(find gazebo_traffic_light)/yaml/light_sequence.yaml" />
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch" >
+    <arg name="world_name" value="$(find gazebo_traffic_light)/worlds/plugin_test.world" />
+    <arg name="verbose" value="true" />
+  </include>
+
+</launch>

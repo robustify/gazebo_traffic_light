@@ -31,10 +31,61 @@ namespace gazebo {
     srv_.reset(new dynamic_reconfigure::Server<gazebo_traffic_light::GazeboTrafficLightConfig>(*n_));
     srv_->setCallback(boost::bind(&GazeboTrafficLight::reconfig, this, _1, _2));
 
-    // TODO: Create a way to set the sequence from YAML and/or service
-    light_sequence_.push_back(LightSequenceEntry(LightColor::GREEN, 4.0, false));
-    light_sequence_.push_back(LightSequenceEntry(LightColor::YELLOW, 2.0, false));
-    light_sequence_.push_back(LightSequenceEntry(LightColor::RED, 6.0, false));
+    XmlRpc::XmlRpcValue sequence_list;
+    if (n_->getParam("light_sequence", sequence_list)) {
+      for (int i = 0; i < sequence_list.size(); i++) {
+        XmlRpc::XmlRpcValue param_dict_list = sequence_list[i];
+        LightSequenceEntry new_entry;
+        bool parsable = true;
+
+        if (param_dict_list["duration"].getType() != XmlRpc::XmlRpcValue::TypeInvalid) {
+          if (param_dict_list["color"].getType() == XmlRpc::XmlRpcValue::TypeString) {
+            std::string color = param_dict_list["color"];
+            if (color == "green") {
+              new_entry.color = LightColor::GREEN;
+            } else if (color == "yellow") {
+              new_entry.color = LightColor::YELLOW;
+            } else { // red
+              new_entry.color = LightColor::RED;
+            }
+          } else {
+            parsable = false;
+            ROS_ERROR("Color attribute is not a string!");
+          }
+        }
+
+        if (param_dict_list["duration"].getType() != XmlRpc::XmlRpcValue::TypeInvalid) {
+          if (param_dict_list["duration"].getType() == XmlRpc::XmlRpcValue::TypeInt) {
+            int temp_val = param_dict_list["duration"];
+            new_entry.duration = (double)temp_val;
+          } else if (param_dict_list["duration"].getType() == XmlRpc::XmlRpcValue::TypeDouble) {
+          } else if (param_dict_list["duration"].getType() == XmlRpc::XmlRpcValue::TypeDouble) {
+            new_entry.duration = param_dict_list["duration"];
+          } else {
+            parsable = false;
+            ROS_ERROR("Duration attribute is not a numeric type!");
+          }
+        }
+
+        if (param_dict_list["flashing"].getType() != XmlRpc::XmlRpcValue::TypeInvalid) {
+          if (param_dict_list["flashing"].getType() == XmlRpc::XmlRpcValue::TypeBoolean) {
+            new_entry.flashing = param_dict_list["flashing"];
+          } else {
+            parsable = false;
+            ROS_ERROR("Flashing attribute is not a boolean type!");
+          }
+        }
+
+        if (parsable) {
+          light_sequence_.push_back(new_entry);
+        }
+      }
+    } else {
+      ROS_INFO_STREAM("light_sequence parameter not found for model " << model->GetName() << "... Using default");
+      light_sequence_.push_back(LightSequenceEntry(LightColor::GREEN, 4.0, false));
+      light_sequence_.push_back(LightSequenceEntry(LightColor::YELLOW, 2.0, false));
+      light_sequence_.push_back(LightSequenceEntry(LightColor::RED, 6.0, false));
+    }
     computeCycleTime();
   }
 
