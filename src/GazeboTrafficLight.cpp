@@ -10,6 +10,26 @@ namespace gazebo {
 
     ROS_INFO_STREAM("Loaded traffic light plugin for model: " << model->GetName());
 
+    std::vector<geometry_msgs::TransformStamped> traffic_light_transforms;
+    for (auto model_link : model->GetLinks()) {
+      if (model_link->GetName().find("light_fixture") != std::string::npos) {
+        geometry_msgs::TransformStamped new_light_transform;
+        new_light_transform.header.frame_id = "world";
+        new_light_transform.child_frame_id = parseLinkName(model_link->GetName());
+        new_light_transform.transform.translation.x = model_link->WorldPose().Pos().X();
+        new_light_transform.transform.translation.y = model_link->WorldPose().Pos().Y();
+        new_light_transform.transform.translation.z = model_link->WorldPose().Pos().Z();
+        new_light_transform.transform.rotation.w = model_link->WorldPose().Rot().W();
+        new_light_transform.transform.rotation.x = model_link->WorldPose().Rot().X();
+        new_light_transform.transform.rotation.y = model_link->WorldPose().Rot().Y();
+        new_light_transform.transform.rotation.z = model_link->WorldPose().Rot().Z();
+        traffic_light_transforms.push_back(new_light_transform);
+      }
+    }
+    if (traffic_light_transforms.size() > 0) {
+      broadcaster_.sendTransform(traffic_light_transforms);
+    }
+
     for (auto model_joint : model->GetJoints()) {
       if (model_joint->GetName().find("switch") == std::string::npos) {
         continue;
@@ -99,6 +119,24 @@ namespace gazebo {
       traffic_light_name = s.substr(0, pos);
       joint_name = s.substr(pos + 2);
     }
+  }
+
+  std::string GazeboTrafficLight::parseLinkName(const std::string& input_str) {
+    std::string output;
+    std::string s = input_str;
+    int count = std::count(input_str.begin(), input_str.end(), ':') / 2;
+    if (count == 0) {
+      output = s;
+    } else {
+      int limit = std::max(1, count - 1);
+      for (int i = 0; i < limit; i++) {
+        size_t pos = s.find("::");
+        output += (s.substr(0, pos) + "_");
+        s = s.substr(pos + 2);
+      }
+      output = output.substr(0, output.length() - 1); // Remove trailing underscore
+    }
+    return output;
   }
 
   void GazeboTrafficLight::computeCycleTime() {

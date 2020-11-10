@@ -2,6 +2,8 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <dynamic_reconfigure/server.h>
 #include <gazebo_traffic_light/GazeboTrafficLightConfig.h>
 #include <gazebo/common/Plugin.hh>
@@ -40,6 +42,7 @@ namespace gazebo {
       void setColor(const std::string& traffic_light_name, LightColor color, bool flashing);
       void advanceSequence(const std::string& traffic_light_name);
       void parseJointName(const std::string& input_str, std::string& traffic_light_name, std::string& joint_name);
+      std::string parseLinkName(const std::string& input_str);
       void reconfig(gazebo_traffic_light::GazeboTrafficLightConfig& config, uint32_t level);
       void timerCb(const ros::TimerEvent& event);
 
@@ -47,6 +50,7 @@ namespace gazebo {
       ros::Timer light_timer_;
       std::shared_ptr<dynamic_reconfigure::Server<gazebo_traffic_light::GazeboTrafficLightConfig> > srv_;
       gazebo_traffic_light::GazeboTrafficLightConfig cfg_;
+      tf2_ros::StaticTransformBroadcaster broadcaster_;
 
       event::ConnectionPtr update_connection_;
       common::Time last_update_time_;
