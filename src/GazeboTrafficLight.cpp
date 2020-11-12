@@ -58,7 +58,7 @@ namespace gazebo {
         LightSequenceEntry new_entry;
         bool parsable = true;
 
-        if (param_dict_list["duration"].getType() != XmlRpc::XmlRpcValue::TypeInvalid) {
+        if (param_dict_list["color"].getType() != XmlRpc::XmlRpcValue::TypeInvalid) {
           if (param_dict_list["color"].getType() == XmlRpc::XmlRpcValue::TypeString) {
             std::string color = param_dict_list["color"];
             if (color == "green") {
