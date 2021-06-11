@@ -79,7 +79,6 @@ namespace gazebo {
             int temp_val = param_dict_list["duration"];
             new_entry.duration = (double)temp_val;
           } else if (param_dict_list["duration"].getType() == XmlRpc::XmlRpcValue::TypeDouble) {
-          } else if (param_dict_list["duration"].getType() == XmlRpc::XmlRpcValue::TypeDouble) {
             new_entry.duration = param_dict_list["duration"];
           } else {
             parsable = false;
