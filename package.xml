@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>gazebo_traffic_light</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>
     Gazebo traffic light model and corresponding control plugin
   </description>
